@@ -1,0 +1,11 @@
+{
+    "doca_general_flags": {
+        "log-level": 60
+    },
+    "doca_program_flags": {
+        "pci": "03:00.0",
+        "size": 64,
+        "iteration": 5,
+        "warm-up": 5
+    }
+}
