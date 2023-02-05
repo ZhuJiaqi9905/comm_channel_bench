@@ -8,7 +8,7 @@ static doca_error_t dev_pci_callback(void *param, void *config) {
   struct Config *conf = (struct Config *)config;
   const char *addr = (char *)param;
   int addr_len = strlen(addr);
-  if (addr_len == PCI_ADDR_LEN) {
+  if (addr_len >= PCI_ADDR_LEN) {
     DOCA_LOG_ERR("Entered dev pci address exceeded buffer size of: %d",
                  PCI_ADDR_LEN - 1);
     return DOCA_ERROR_INVALID_VALUE;
@@ -20,7 +20,7 @@ static doca_error_t rep_pci_callback(void *param, void *config) {
   struct Config *conf = (struct Config *)config;
   const char *addr = (char *)param;
   int addr_len = strlen(addr);
-  if (addr_len == PCI_ADDR_LEN) {
+  if (addr_len >= PCI_ADDR_LEN) {
     DOCA_LOG_ERR("Entered rep pci address exceeded buffer size of: %d",
                  PCI_ADDR_LEN - 1);
     return DOCA_ERROR_INVALID_VALUE;
@@ -51,8 +51,8 @@ static doca_error_t warm_up_callback(void *param, void *config) {
 static doca_error_t byte_size_callback(void *param, void *config) {
   struct Config *conf = (struct Config *)config;
   int byte_size = *(int *)param;
-  if (byte_size <= 0) {
-    DOCA_LOG_ERR("Data size to be positive, but got %d", byte_size);
+  if (byte_size < 8) {
+    DOCA_LOG_ERR("Data size needs to > 8, but got %d", byte_size);
     return DOCA_ERROR_INVALID_VALUE;
   }
   conf->byte_size = byte_size;
@@ -61,6 +61,18 @@ static doca_error_t byte_size_callback(void *param, void *config) {
 static doca_error_t is_client_callback(void *param, void *config) {
   struct Config *conf = (struct Config *)config;
   conf->is_client = true;
+  return DOCA_SUCCESS;
+}
+static doca_error_t server_name_callback(void *param, void *config) {
+  struct Config *conf = (struct Config *)config;
+  const char *name = (char *)param;
+  int len = strlen(name);
+  if (len >= MAX_ARG_LEN) {
+    DOCA_LOG_ERR("Entered server name exceeded buffer size of: %d",
+                 MAX_ARG_LEN - 1);
+    return DOCA_ERROR_INVALID_VALUE;
+  }
+  strcpy(conf->server_name, name);
   return DOCA_SUCCESS;
 }
 doca_error_t register_params() {
@@ -187,6 +199,24 @@ doca_error_t register_params() {
                  doca_get_error_string(result));
     return result;
   }
-
+  // Create and register server_name param
+  struct doca_argp_param *server_name_param;
+  result = doca_argp_param_create(&server_name_param);
+  if (result != DOCA_SUCCESS) {
+    DOCA_LOG_ERR("Failed to create ARGP param: %s",
+                 doca_get_error_string(result));
+    return result;
+  }
+  doca_argp_param_set_short_name(server_name_param, "n");
+  doca_argp_param_set_long_name(server_name_param, "server-name");
+  doca_argp_param_set_description(server_name_param, "The server name");
+  doca_argp_param_set_callback(server_name_param, server_name_callback);
+  doca_argp_param_set_type(server_name_param, DOCA_ARGP_TYPE_STRING);
+  result = doca_argp_register_param(server_name_param);
+  if (result != DOCA_SUCCESS) {
+    DOCA_LOG_ERR("Failed to register program param: %s",
+                 doca_get_error_string(result));
+    return result;
+  }
   return DOCA_SUCCESS;
 }

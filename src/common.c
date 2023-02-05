@@ -1,8 +1,8 @@
 #include "include/common.h"
+#include <doca_dma.h>
+#include <doca_log.h>
 #include <stdlib.h>
 #include <string.h>
-#include <doca_log.h>
-#include <doca_dma.h>
 DOCA_LOG_REGISTER(common.c);
 
 /// @brief parse the PCIe address to the out_buf
@@ -95,8 +95,38 @@ doca_error_t open_doca_device_with_pci(const struct doca_pci_bdf *value,
   doca_devinfo_list_destroy(dev_list);
   return res;
 }
-doca_error_t
-dma_jobs_is_supported(struct doca_devinfo *devinfo)
-{
-	return doca_dma_job_get_supported(devinfo, DOCA_DMA_JOB_MEMCPY);
+doca_error_t dma_jobs_is_supported(struct doca_devinfo *devinfo) {
+  return doca_dma_job_get_supported(devinfo, DOCA_DMA_JOB_MEMCPY);
+}
+
+doca_error_t send_msg(struct doca_comm_channel_ep_t *ep,
+                      struct doca_comm_channel_addr_t *peer_addr,
+                      const uint8_t *msg, size_t len) {
+  doca_error_t result = DOCA_SUCCESS;
+  while (
+      (result = doca_comm_channel_ep_sendto(ep, msg, len, DOCA_CC_MSG_FLAG_NONE,
+                                            peer_addr)) == DOCA_ERROR_AGAIN) {
+  }
+  return result;
+}
+doca_error_t recv_msg(struct doca_comm_channel_ep_t *ep,
+                      struct doca_comm_channel_addr_t *peer_addr, uint8_t *msg,
+                      size_t len) {
+  doca_error_t result = DOCA_SUCCESS;
+  size_t remain_len = len;
+  while (remain_len > 0) {
+    size_t recv_len = remain_len;
+    while ((result = doca_comm_channel_ep_recvfrom(
+                ep, msg, &recv_len, DOCA_CC_MSG_FLAG_NONE, &peer_addr)) ==
+           DOCA_ERROR_AGAIN) {
+      DOCA_LOG_DBG("recv_len: %ld", recv_len);
+      recv_len = remain_len;
+    }
+    if (result != DOCA_SUCCESS) {
+      return result;
+    }
+    remain_len -= recv_len;
+    msg = msg + recv_len;
+  }
+  return result;
 }

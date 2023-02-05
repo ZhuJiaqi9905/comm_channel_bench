@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
       .rep_pci_addr = "31:00.0",
       .warm_up = 1,
       .is_client = false,
+      .server_name = "server"
   };
   doca_error_t result = DOCA_SUCCESS;
   result = doca_argp_init("comm_channel_bench", &config);
