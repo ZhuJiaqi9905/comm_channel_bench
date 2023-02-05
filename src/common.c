@@ -1,9 +1,14 @@
 #include "include/common.h"
+#include <doca_dev.h>
 #include <doca_dma.h>
 #include <doca_log.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 DOCA_LOG_REGISTER(common.c);
+const static unsigned char all_char[] =
+    "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+#define ALL_CHAR_LEN sizeof(all_char)
 
 /// @brief parse the PCIe address to the out_buf
 /// @param pci_addr [in]: PCIe address.
@@ -95,6 +100,49 @@ doca_error_t open_doca_device_with_pci(const struct doca_pci_bdf *value,
   doca_devinfo_list_destroy(dev_list);
   return res;
 }
+/// @brief Open a DOCA device representor according to a given PCIe adderss.
+/// @param local [in] a local DOCA device with access to representors.
+/// @param  filter [in] filter Bitmap filter of representor types.
+/// @param pci_bdf [in] PCIe address of the representor.
+/// @param retval [out] Initialized representor doca device instance on success.
+/// @return
+doca_error_t open_doca_device_rep_with_pci(struct doca_dev *local,
+                                           enum doca_dev_rep_filter filter,
+                                           struct doca_pci_bdf *pci_bdf,
+                                           struct doca_dev_rep **retval) {
+  uint32_t nb_rdevs = 0;
+  struct doca_devinfo_rep **rep_dev_list = NULL;
+  struct doca_pci_bdf queried_pci_bdf;
+  doca_error_t result;
+  size_t i;
+
+  *retval = NULL;
+
+  /* Search */
+  result =
+      doca_devinfo_rep_list_create(local, filter, &rep_dev_list, &nb_rdevs);
+  if (result != DOCA_SUCCESS) {
+    DOCA_LOG_ERR("Failed to create devinfo representors list. Representor "
+                 "devices are available only on DPU, do not run on Host.");
+    return DOCA_ERROR_INVALID_VALUE;
+  }
+
+  for (i = 0; i < nb_rdevs; i++) {
+    result = doca_devinfo_rep_get_pci_addr(rep_dev_list[i], &queried_pci_bdf);
+
+    DOCA_LOG_INFO("pci_buf %x%x%x", queried_pci_bdf.bus, queried_pci_bdf.device,
+                  queried_pci_bdf.function);
+    if (result == DOCA_SUCCESS && queried_pci_bdf.raw == pci_bdf->raw &&
+        doca_dev_rep_open(rep_dev_list[i], retval) == DOCA_SUCCESS) {
+      doca_devinfo_rep_list_destroy(rep_dev_list);
+      return DOCA_SUCCESS;
+    }
+  }
+
+  DOCA_LOG_ERR("Matching device not found.");
+  doca_devinfo_rep_list_destroy(rep_dev_list);
+  return DOCA_ERROR_NOT_FOUND;
+}
 doca_error_t dma_jobs_is_supported(struct doca_devinfo *devinfo) {
   return doca_dma_job_get_supported(devinfo, DOCA_DMA_JOB_MEMCPY);
 }
@@ -129,4 +177,11 @@ doca_error_t recv_msg(struct doca_comm_channel_ep_t *ep,
     msg = msg + recv_len;
   }
   return result;
+}
+
+void generate_random_data(uint8_t *buf, size_t len) {
+  for (int i = 0; i < len - 1; ++i) {
+    buf[i] = all_char[rand() % ALL_CHAR_LEN];
+  }
+  buf[len - 1] = 0;
 }

@@ -4,6 +4,9 @@
 #include <doca_log.h>
 #include <stdlib.h>
 #include <unistd.h>
+#define MAX_MSG_SIZE 4080
+#define CC_MAX_QUEUE_SIZE 10
+
 DOCA_LOG_REGISTER(client.c);
 static doca_error_t
 ping_pong_benchmark(struct doca_comm_channel_ep_t *ep,
@@ -48,7 +51,13 @@ doca_error_t client_benchmark(struct doca_pci_bdf *dev_pcie,
     DOCA_LOG_ERR("Failed to set max_msg_size property");
     goto fail_connect;
   }
-
+  uint16_t max_msg_size = 0;
+  result = doca_comm_channel_ep_get_max_msg_size(ep, &max_msg_size);
+  if (result != DOCA_SUCCESS) {
+    DOCA_LOG_ERR("Failed to get max_msg_size property");
+    goto fail_connect;
+  }
+  DOCA_LOG_DBG("max_msg_size is: %d", max_msg_size);
   result = doca_comm_channel_ep_set_send_queue_size(ep, CC_MAX_QUEUE_SIZE);
   if (result != DOCA_SUCCESS) {
     DOCA_LOG_ERR("Failed to set snd_queue_size property");
@@ -82,6 +91,13 @@ doca_error_t client_benchmark(struct doca_pci_bdf *dev_pcie,
   // connection successfully.
   DOCA_LOG_INFO("Connection to server was established successfully");
 
+  // ping pong benchmark
+  result = ping_pong_benchmark(ep, peer_addr, config);
+  if (result != DOCA_SUCCESS) {
+    DOCA_LOG_ERR("ping pong benchmark fail: %s", doca_get_error_string(result));
+    goto fail_ping_pong;
+  }
+fail_ping_pong:
   doca_comm_channel_ep_disconnect(ep, peer_addr);
 fail_connect:
   doca_dev_close(cc_dev);
@@ -110,8 +126,9 @@ ping_pong_benchmark(struct doca_comm_channel_ep_t *ep,
     goto fail_alloc_buf;
   }
   *((int *)data) = size;
-  *((int *)(data + sizeof(int))) = total_iter;
-  int first_msg_len = sizeof(int) * 2;
+  *((int *)(data + sizeof(int))) = config->warm_up;
+  *((int *)(data + sizeof(int) * 2)) = config->iterations;
+  int first_msg_len = sizeof(int) * 3;
   // send first msg
   result = send_msg(ep, peer_addr, data, first_msg_len);
   if (result != DOCA_SUCCESS) {

@@ -51,8 +51,9 @@ static doca_error_t warm_up_callback(void *param, void *config) {
 static doca_error_t byte_size_callback(void *param, void *config) {
   struct Config *conf = (struct Config *)config;
   int byte_size = *(int *)param;
-  if (byte_size < 8) {
-    DOCA_LOG_ERR("Data size needs to > 8, but got %d", byte_size);
+  if (byte_size < sizeof(int) * 3) {
+    DOCA_LOG_ERR("Data size needs to > %lu, but got %d", sizeof(int) * 3,
+                 byte_size);
     return DOCA_ERROR_INVALID_VALUE;
   }
   conf->byte_size = byte_size;

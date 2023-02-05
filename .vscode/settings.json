@@ -4,7 +4,8 @@
         "params.h": "c",
         "doca_argp.h": "c",
         "common.h": "c",
-        "core.h": "c"
+        "core.h": "c",
+        "doca_log.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
