@@ -137,23 +137,24 @@ ping_pong_benchmark(struct doca_comm_channel_ep_t *ep,
     result = DOCA_ERROR_NO_MEMORY;
     goto fail_alloc_buf;
   }
+  generate_random_data(data, size);
   // ping-pong
   for (int i = 0; i < config->warm_up; ++i) {
-    generate_random_data(data, size);
+    // generate_random_data(data, size);
     // send a msg
     result = send_msg(ep, peer_addr, data, size);
     if (result != DOCA_SUCCESS) {
       DOCA_LOG_ERR("Send message error: %s", doca_get_error_string(result));
       goto fail_transfer_msg;
     }
-    DOCA_LOG_DBG("Send msg: %s", data);
+    // DOCA_LOG_DBG("Send msg: %s", data);
     // recv a msg
     result = recv_msg(ep, peer_addr, data, size);
     if (result != DOCA_SUCCESS) {
       DOCA_LOG_ERR("Recv message error: %s", doca_get_error_string(result));
       goto fail_transfer_msg;
     }
-    DOCA_LOG_DBG("Recv msg: %s", data);
+    // DOCA_LOG_DBG("Recv msg: %s", data);
   }
   double avg_duration = 0;
   for (int i = 0; i < config->iterations; ++i) {

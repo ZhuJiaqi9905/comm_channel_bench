@@ -167,8 +167,8 @@ doca_error_t recv_msg(struct doca_comm_channel_ep_t *ep,
     while ((result = doca_comm_channel_ep_recvfrom(
                 ep, msg, &recv_len, DOCA_CC_MSG_FLAG_NONE, &peer_addr)) ==
            DOCA_ERROR_AGAIN) {
-      DOCA_LOG_DBG("recv_len: %ld", recv_len);
-      recv_len = remain_len;
+      // DOCA_LOG_DBG("recv_len: %ld", recv_len);
+      // recv_len = remain_len;
     }
     if (result != DOCA_SUCCESS) {
       return result;

@@ -5,6 +5,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(DOCA REQUIRED doca-dma doca-flow doca-common doca-telemetry 
 doca-apsh doca-argp doca-dpi doca-regex  doca-sha doca-ipsec doca-comm-channel doca-compress)
 
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -DNEBUG")
 
 add_library(params STATIC src/params.c)
 target_link_libraries(params ${DOCA_LIBRARIES})
